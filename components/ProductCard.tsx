@@ -86,7 +86,7 @@ export default function ProductCard({ product }: Props) {
         <p className="text-sm opacity-70">{product.brand}</p>
         <StarRating rating={product.rating} />
         <p className={`text-lg font-bold ${themeColors.price}`}>
-          ${product.price}
+          ₦{product.price}
         </p>
       </div>
 
