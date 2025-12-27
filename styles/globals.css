@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Desktop nav links */
+
+/* Desktop nav links */
+
+@import "swiper/css";
+@import "swiper/css/navigation";
+@import "swiper/css/pagination";
+.navLink {
+  @apply hover:underline transition;
+}
+
+.navMobile {
+  @apply block hover:underline text-lg transition;
+}
+
+.clip-half {
+  clip-path: inset(0 50% 0 0);
+}
