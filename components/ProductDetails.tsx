@@ -6,17 +6,16 @@ import { Product } from "@/lib/types";
 import AddToCartButton from "./AddToCartButton";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey, ProductTheme } from "@/theme";
+import { useCartContext } from "./CartContext"; // ✅ import context
 
 interface Props {
   product: Product;
-  themeColors?: ProductTheme; // fixed typo
+  themeColors?: ProductTheme; // optional theme override
 }
 
 export default function ProductDetail({ product, themeColors }: Props) {
   const { resolvedTheme } = useTheme();
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
-
-  // Use passed themeColors or fallback to default theme
   const colorsToUse: ProductTheme = themeColors || colors.product[themeKey];
 
   const stockCount = Number(product.stock) || 0;
@@ -34,6 +33,9 @@ export default function ProductDetail({ product, themeColors }: Props) {
     style: "currency",
     currency: "NGN",
   }).format(Number(product.price) || 0);
+
+  // ✅ Get flying cart ref from context
+  const { cartRef } = useCartContext();
 
   return (
     <div className={`max-w-6xl mx-auto px-4 py-8 ${colorsToUse.bg} ${colorsToUse.text}`}>
@@ -120,6 +122,7 @@ export default function ProductDetail({ product, themeColors }: Props) {
             imageRef={imageRef}
             fullWidth={false}
             disabled={isOutOfStock}
+            cartRef={cartRef} // ✅ pass flying cart ref
           />
         </div>
       </div>
@@ -131,6 +134,7 @@ export default function ProductDetail({ product, themeColors }: Props) {
           buttonClass={colorsToUse.addToCart}
           fullWidth
           disabled={isOutOfStock}
+          cartRef={cartRef} // ✅ flying cart on mobile too
         />
       </div>
     </div>

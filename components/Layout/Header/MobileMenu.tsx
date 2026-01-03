@@ -5,6 +5,7 @@ import { AuthUser } from "@/components/store/authstore";
 import ToggleButton from "@/components/icons/ToggleButton"; 
 import { useWishlistStore } from "@/components/store/Wishlist";
 import { useCartStore } from "@/components/store/CartStore";
+import { RefObject } from "react";
 
 interface MobileMenuProps {
   menuOpen: boolean;
@@ -15,6 +16,7 @@ interface MobileMenuProps {
   login: (args: { token: string; user: AuthUser }) => void;
   logout: () => void;
   themeColors: { navLink: string };
+  cartRef: RefObject<HTMLDivElement | null>; // <-- added
 }
 
 export default function MobileMenu({
@@ -26,6 +28,7 @@ export default function MobileMenu({
   login,
   logout,
   themeColors,
+  cartRef, // <-- receive cartRef
 }: MobileMenuProps) {
   const { wishlist } = useWishlistStore();
   const wishlistCount = wishlist.length;
@@ -56,18 +59,18 @@ export default function MobileMenu({
         Contact
       </Link>
 
-      {/* Cart - always visible */}
+      {/* Cart */}
       <Link
         href={isAuthenticated ? "/cart" : "/login"}
         className={themeColors.navLink}
         onClick={() => setMenuOpen(false)}
       >
-        <div id="cart-icon" className="relative">
-        Cart ({cartCount})
+        <div ref={cartRef} className="relative"> {/* <-- use same ref */}
+          Cart ({cartCount})
         </div>
       </Link>
 
-      {/* Wishlist link - auth only */}
+      {/* Wishlist - auth only */}
       {isAuthenticated && (
         <Link
           href="/wishlist"
@@ -78,7 +81,7 @@ export default function MobileMenu({
         </Link>
       )}
 
-      {/* Guest links */}
+      {/* Guest Links */}
       {!isAuthenticated ? (
         <>
           <Link href="/login" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
@@ -87,15 +90,10 @@ export default function MobileMenu({
           <Link href="/signup" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
             Signup
           </Link>
-          <Link
-            href="/forgot-password"
-            className={themeColors.navLink}
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link href="/forgot-password" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
             Forgot Password
           </Link>
 
-          {/* Dev Login */}
           {isDev && (
             <button
               onClick={handleDevLogin}
@@ -107,7 +105,7 @@ export default function MobileMenu({
         </>
       ) : (
         <>
-          {/* Authenticated links */}
+          {/* Authenticated Links */}
           <Link href="/account" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
             My Account
           </Link>

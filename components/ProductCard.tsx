@@ -9,18 +9,19 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey } from "@/theme";
 import AddToCartButton from "./AddToCartButton";
-import { useRef } from "react";
+import { useRef, RefObject } from "react";
 
 interface Props {
   product: Product;
+  cartRef?: RefObject<HTMLDivElement | null>; // ✅ OPTIONAL
 }
 
-export default function ProductCard({ product }: Props) {
+export default function ProductCard({ product, cartRef }: Props) {
   const { resolvedTheme } = useTheme();
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
   const themeColors = colors.product[themeKey];
 
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const { toggle, isLiked } = useWishlistStore();
   const liked = isLiked(product.id);
 
@@ -33,8 +34,8 @@ export default function ProductCard({ product }: Props) {
       whileHover="hover"
       animate="rest"
       className={`rounded-xl p-4 border transition
-      ${themeColors.cardBg} ${themeColors.border}
-      hover:shadow-xl hover:translate-y-2 hover:scale-[1.02]`}
+        ${themeColors.cardBg} ${themeColors.border}
+        hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02]`}
     >
       {/* IMAGE AREA */}
       <Link href={`/products/${product.slug}`}>
@@ -103,8 +104,9 @@ export default function ProductCard({ product }: Props) {
             product={product}
             buttonClass={themeColors.addToCart}
             imageRef={imageRef}
+            cartRef={cartRef} // ✅ PASSED SAFELY
             fullWidth
-             disabled={(Number(product.stock) || 0) <= 0}
+            disabled={(Number(product.stock) || 0) <= 0}
           />
         </motion.div>
 
@@ -114,10 +116,7 @@ export default function ProductCard({ product }: Props) {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.85 }}
           animate={liked ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className={`px-4 rounded-lg flex items-center justify-center ${themeColors.wishlist}`}
         >
           <Heart
@@ -126,7 +125,6 @@ export default function ProductCard({ product }: Props) {
             fill={liked ? "red" : "none"}
           />
         </motion.button>
-
       </div>
     </motion.div>
   );

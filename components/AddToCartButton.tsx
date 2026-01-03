@@ -9,6 +9,7 @@ interface Props {
   product: Product;
   buttonClass?: string;
   imageRef?: RefObject<HTMLImageElement | null>;
+  cartRef?: RefObject<HTMLDivElement | null>; // optional on purpose
   fullWidth?: boolean;
   disabled?: boolean;
 }
@@ -17,6 +18,7 @@ export default function AddToCartButton({
   product,
   buttonClass,
   imageRef,
+  cartRef,
   fullWidth,
   disabled,
 }: Props) {
@@ -26,13 +28,17 @@ export default function AddToCartButton({
   const finalDisabled = disabled ?? stockCount <= 0;
 
   function handleAddToCart() {
-    if (finalDisabled) return; // prevent click if disabled
+    if (finalDisabled) return;
+
     addToCart(product);
 
-    if (!imageRef?.current) return;
+    const img = imageRef?.current;
 
-    const img = imageRef.current;
-    const cartIcon = document.getElementById("cart-icon");
+    // 🔥 CRITICAL FIX: ref OR DOM fallback
+    const cartIcon =
+      cartRef?.current ??
+      (document.getElementById("cart-icon") as HTMLDivElement | null);
+
     if (!img || !cartIcon) return;
 
     const imgRect = img.getBoundingClientRect();
@@ -40,29 +46,30 @@ export default function AddToCartButton({
 
     const clone = img.cloneNode(true) as HTMLImageElement;
     clone.style.position = "fixed";
-    clone.style.left = imgRect.left + "px";
-    clone.style.top = imgRect.top + "px";
-    clone.style.width = imgRect.width + "px";
-    clone.style.height = imgRect.height + "px";
-    clone.style.transition =
-      "transform 0.8s cubic-bezier(0.65, -0.1, 0.3, 1.5), opacity 0.8s";
-    clone.style.zIndex = "9999";
+    clone.style.left = `${imgRect.left}px`;
+    clone.style.top = `${imgRect.top}px`;
+    clone.style.width = `${imgRect.width}px`;
+    clone.style.height = `${imgRect.height}px`;
     clone.style.borderRadius = "8px";
     clone.style.pointerEvents = "none";
+    clone.style.zIndex = "9999";
+    clone.style.transition =
+      "transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s";
 
     document.body.appendChild(clone);
 
-    const imgX = imgRect.left + window.scrollX + imgRect.width / 2;
-    const imgY = imgRect.top + window.scrollY + imgRect.height / 2;
-    const cartX = cartRect.left + window.scrollX + cartRect.width / 2;
-    const cartY = cartRect.top + window.scrollY + cartRect.height / 2;
-
-    const deltaX = cartX - imgX;
-    const deltaY = cartY - imgY;
+    const deltaX =
+      cartRect.left +
+      cartRect.width / 2 -
+      (imgRect.left + imgRect.width / 2);
+    const deltaY =
+      cartRect.top +
+      cartRect.height / 2 -
+      (imgRect.top + imgRect.height / 2);
 
     requestAnimationFrame(() => {
-      clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0)`;
-      clone.style.opacity = "0.5";
+      clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.2)`;
+      clone.style.opacity = "0";
     });
 
     clone.addEventListener("transitionend", () => clone.remove());

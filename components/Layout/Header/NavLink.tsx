@@ -5,13 +5,15 @@ import { AuthUser } from "@/components/store/authstore";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useWishlistStore } from "@/components/store/Wishlist";
 import { useCartStore } from "@/components/store/CartStore";
+import { RefObject } from "react";
 
 interface NavLinksProps {
   isAuthenticated: boolean;
   isDev: boolean;
   login: (args: { token: string; user: AuthUser }) => void;
   themeColors: { navLink: string; icon?: string };
-  onLinkClick?: () => void; // optional: to close mobile menu
+  onLinkClick?: () => void;
+  cartRef: RefObject<HTMLDivElement | null>;
 }
 
 export default function NavLinks({
@@ -20,6 +22,7 @@ export default function NavLinks({
   login,
   themeColors,
   onLinkClick,
+  cartRef,
 }: NavLinksProps) {
   const { wishlist } = useWishlistStore();
   const wishlistCount = wishlist.length;
@@ -36,72 +39,45 @@ export default function NavLinks({
   };
 
   return (
-    <nav className="flex flex-col md:flex-row md:items-center md:gap-6">
+    <nav className="flex items-center gap-6">
       {/* Main Links */}
-      <Link href="/" className={themeColors.navLink} onClick={onLinkClick}>
-        Home
-      </Link>
-      <Link href="/products" className={themeColors.navLink} onClick={onLinkClick}>
-        All Products
-      </Link>
-      <Link href="/contact" className={themeColors.navLink} onClick={onLinkClick}>
-        Contact
+      <Link href="/" className={themeColors.navLink} onClick={onLinkClick}>Home</Link>
+      <Link href="/products" className={themeColors.navLink} onClick={onLinkClick}>Products</Link>
+      <Link href="/contact" className={themeColors.navLink} onClick={onLinkClick}>Contact</Link>
+
+      {/* Cart */}
+      <Link
+        href={isAuthenticated ? "/cart" : "/login"}
+        className={themeColors.navLink}
+        onClick={onLinkClick}
+      >
+        <div ref={cartRef} className="relative">
+          <ShoppingCart className={themeColors.icon || "w-5 h-5"} />
+          {cartCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+              {cartCount}
+            </span>
+          )}
+        </div>
       </Link>
 
-      {/* Authenticated-only links */}
+      {/* Wishlist */}
       {isAuthenticated && (
-        <>
-          {/* Wishlist with badge like UserMenu */}
-          <Link
-            href="/wishlist"
-            className={themeColors.navLink}
-            onClick={onLinkClick}
-          >
-            <div className="relative">
-              <Heart className={themeColors.icon || "w-5 h-5 "} />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
-            </div>
-          </Link>
-
-          {/* Cart with badge like UserMenu */}
-          <Link
-            href="/cart"
-            className={themeColors.navLink}
-            onClick={onLinkClick}
-          >
-            <div id="cart-icon" className="relative">
-              <ShoppingCart className={themeColors.icon || "w-5 h-5"} />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </div>
-          </Link>
-        </>
+        <Link href="/wishlist" className={themeColors.navLink} onClick={onLinkClick}>
+          <div className="relative">
+            <Heart className={themeColors.icon || "w-5 h-5"} />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                {wishlistCount}
+              </span>
+            )}
+          </div>
+        </Link>
       )}
 
-      {/* Guest-only links */}
-      {!isAuthenticated && (
-        <>
-          <Link href="/login" className={themeColors.navLink} onClick={onLinkClick}>
-            Login
-          </Link>
-          <Link href="/signup" className={themeColors.navLink} onClick={onLinkClick}>
-            Signup
-          </Link>
-        </>
-      )}
-
-      {/* Dev Login */}
+      {/* Dev login */}
       {isDev && !isAuthenticated && (
-        <button onClick={handleDevLogin} className={themeColors.navLink}>
-          Dev Login
-        </button>
+        <button onClick={handleDevLogin} className={themeColors.navLink}>Dev Login</button>
       )}
     </nav>
   );

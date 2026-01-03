@@ -1,21 +1,23 @@
-import { ReactNode } from "react"
+import { ReactNode, useRef } from "react";
 import Header from "./Header/Header";
-import Footer from "./Footer"; // make sure Footer exists
-
+import Footer from "./Footer";
+import { CartContext } from "../CartContext";
 
 interface LayoutProps {
-  children: ReactNode; // this is the important part
+  children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const cartRef = useRef<HTMLDivElement | null>(null); // global flying cart ref
+
   return (
-     <>
-      <Header />
-      <main className="min-h-screen">
-        {children}
-      </main>
-       <Footer /> 
-    </>
+    <CartContext.Provider value={{ cartRef }}>
+      <Header cartRef={cartRef} />
+
+      <main className="min-h-screen">{children}</main>
+
+      <Footer />
+    </CartContext.Provider>
   );
 };
 
