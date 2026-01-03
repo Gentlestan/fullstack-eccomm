@@ -1,13 +1,12 @@
-// pages/search.tsx
 "use client";
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { Product } from "@/lib/types";
 import { colors, ThemeKey } from "@/theme";
 import ProductCard from "@/components/ProductCard";
 import ProductSkeleton from "@/components/skeletons/ProductSkeleton";
-import { useRouter } from "next/router";
 
 export default function SearchPage() {
   const { resolvedTheme } = useTheme();
@@ -15,18 +14,18 @@ export default function SearchPage() {
   const themeColors = colors.product[themeKey];
 
   const router = useRouter();
-  const { q } = router.query; // search query from URL ?q=keyword
 
-  const [searchQuery, setSearchQuery] = useState(q || "");
+  const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Update searchQuery if query param changes
+  // Update searchQuery when router.query.q changes (after navigation)
   useEffect(() => {
+    const q = router.query.q;
     if (typeof q === "string") setSearchQuery(q);
-  }, [q]);
+  }, [router.query.q]);
 
-  // Fetch products from API whenever searchQuery changes
+  // Fetch products whenever searchQuery changes
   useEffect(() => {
     if (!searchQuery) {
       setResults([]);
@@ -36,9 +35,7 @@ export default function SearchPage() {
 
     setLoading(true);
 
-    const queryString = Array.isArray(searchQuery) ? searchQuery[0] : searchQuery;
-    
-    fetch(`/api/products?q=${encodeURIComponent(queryString)}`)
+    fetch(`/api/products?q=${encodeURIComponent(searchQuery)}`)
       .then((res) => res.json())
       .then((data: Product[]) => {
         setResults(data);
@@ -51,18 +48,25 @@ export default function SearchPage() {
       });
   }, [searchQuery]);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <section className={`mt-10 px-6 md:px-10 max-w-7xl mx-auto ${themeColors.bg} ${themeColors.text}`}>
       <h1 className="text-3xl md:text-4xl font-bold mb-4">Search Products</h1>
 
       {/* Search Input */}
-      <div className="mb-6">
+      <div className="mb-6 md:w-1/3">
         <input
           type="text"
           placeholder="Search products..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className={`w-full md:w-1/3 px-4 py-2 rounded-lg border ${themeColors.border} bg-transparent text-inherit`}
+          onKeyDown={handleKeyDown}
+          className={`w-full px-4 py-2 rounded-lg border ${themeColors.border} bg-transparent text-inherit focus:outline-none focus:ring focus:ring-blue-500`}
         />
       </div>
 
