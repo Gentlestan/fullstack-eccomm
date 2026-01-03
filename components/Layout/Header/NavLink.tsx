@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { AuthUser } from "@/components/store/authstore";
-import { Heart } from "lucide-react";
+import { Heart, ShoppingCart } from "lucide-react";
 import { useWishlistStore } from "@/components/store/Wishlist";
+import { useCartStore } from "@/components/store/CartStore";
 
 interface NavLinksProps {
   isAuthenticated: boolean;
   isDev: boolean;
   login: (args: { token: string; user: AuthUser }) => void;
-  themeColors: { navLink: string };
+  themeColors: { navLink: string; icon?: string };
   onLinkClick?: () => void; // optional: to close mobile menu
 }
 
@@ -22,6 +23,9 @@ export default function NavLinks({
 }: NavLinksProps) {
   const { wishlist } = useWishlistStore();
   const wishlistCount = wishlist.length;
+
+  const { items } = useCartStore();
+  const cartCount = items.reduce((acc, i) => acc + i.qty, 0);
 
   const handleDevLogin = () => {
     login({
@@ -47,15 +51,36 @@ export default function NavLinks({
       {/* Authenticated-only links */}
       {isAuthenticated && (
         <>
+          {/* Wishlist with badge like UserMenu */}
           <Link
             href="/wishlist"
-            className={`${themeColors.navLink} flex items-center gap-1`}
+            className={themeColors.navLink}
             onClick={onLinkClick}
           >
-            <Heart className="w-4 h-4 text-red-600" />
-            {wishlistCount > 0 && (
-              <span className="text-sm font-medium text-red-600">{wishlistCount}</span>
-            )}
+            <div className="relative">
+              <Heart className={themeColors.icon || "w-5 h-5 "} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {wishlistCount}
+                </span>
+              )}
+            </div>
+          </Link>
+
+          {/* Cart with badge like UserMenu */}
+          <Link
+            href="/cart"
+            className={themeColors.navLink}
+            onClick={onLinkClick}
+          >
+            <div id="cart-icon" className="relative">
+              <ShoppingCart className={themeColors.icon || "w-5 h-5"} />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </div>
           </Link>
         </>
       )}
@@ -68,13 +93,6 @@ export default function NavLinks({
           </Link>
           <Link href="/signup" className={themeColors.navLink} onClick={onLinkClick}>
             Signup
-          </Link>
-          <Link
-            href="/forgot-password"
-            className={themeColors.navLink}
-            onClick={onLinkClick}
-          >
-            Forgot Password
           </Link>
         </>
       )}

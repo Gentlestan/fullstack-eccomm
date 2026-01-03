@@ -18,16 +18,7 @@ export default function UserMenu({ user, logout, themeColors }: UserMenuProps) {
 
   return (
     <div className="flex items-center gap-4">
-      {/* Cart */}
-      <div className="relative">
-        <ShoppingCart className={themeColors.icon} />
-        {itemCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-            {itemCount}
-          </span>
-        )}
-      </div>
-
+      
       {/* Profile Menu */}
       {user && (
         <div className="hidden md:block">

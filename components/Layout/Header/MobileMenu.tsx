@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthUser } from "@/components/store/authstore";
 import ToggleButton from "@/components/icons/ToggleButton"; 
 import { useWishlistStore } from "@/components/store/Wishlist";
+import { useCartStore } from "@/components/store/CartStore";
 
 interface MobileMenuProps {
   menuOpen: boolean;
@@ -29,6 +30,9 @@ export default function MobileMenu({
   const { wishlist } = useWishlistStore();
   const wishlistCount = wishlist.length;
 
+  const { items: cartItems } = useCartStore();
+  const cartCount = cartItems.reduce((acc, i) => acc + i.qty, 0);
+
   if (!menuOpen) return null;
 
   const handleDevLogin = () => {
@@ -52,7 +56,18 @@ export default function MobileMenu({
         Contact
       </Link>
 
-      {/* Wishlist link as text */}
+      {/* Cart - always visible */}
+      <Link
+        href={isAuthenticated ? "/cart" : "/login"}
+        className={themeColors.navLink}
+        onClick={() => setMenuOpen(false)}
+      >
+        <div id="cart-icon" className="relative">
+        Cart ({cartCount})
+        </div>
+      </Link>
+
+      {/* Wishlist link - auth only */}
       {isAuthenticated && (
         <Link
           href="/wishlist"
@@ -63,7 +78,7 @@ export default function MobileMenu({
         </Link>
       )}
 
-      {/* Auth Links */}
+      {/* Guest links */}
       {!isAuthenticated ? (
         <>
           <Link href="/login" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
@@ -92,6 +107,7 @@ export default function MobileMenu({
         </>
       ) : (
         <>
+          {/* Authenticated links */}
           <Link href="/account" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
             My Account
           </Link>
