@@ -1,5 +1,4 @@
-"use client";
-
+// pages/products/[slug].tsx
 import { GetServerSideProps } from "next";
 import ProductDetail from "@/components/ProductDetails";
 import ProductReviews from "@/components/ProductReviews";
@@ -30,7 +29,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   try {
     const product = await fetchProductBySlug(slug);
-    const reviews = await fetchReviews(product.id);
+    const reviews = await fetchReviews(product.id); // use ID internally
 
     return {
       props: {
@@ -41,6 +40,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   } catch (error) {
     console.error(error);
-    return { notFound: true };
+    return { notFound: true }; // product not found
   }
 };
