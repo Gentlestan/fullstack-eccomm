@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { AuthUser } from "@/components/store/authstore";
-import ToggleButton from "@/components/icons/ToggleButton"; // import your toggle
+import ToggleButton from "@/components/icons/ToggleButton"; 
+import { useWishlistStore } from "@/components/store/Wishlist";
 
 interface MobileMenuProps {
   menuOpen: boolean;
@@ -10,8 +13,6 @@ interface MobileMenuProps {
   isDev: boolean;
   login: (args: { token: string; user: AuthUser }) => void;
   logout: () => void;
-  itemCount: number;
-  wishlistCount: number;
   themeColors: { navLink: string };
 }
 
@@ -23,10 +24,11 @@ export default function MobileMenu({
   isDev,
   login,
   logout,
-  itemCount,
-  wishlistCount,
   themeColors,
 }: MobileMenuProps) {
+  const { wishlist } = useWishlistStore();
+  const wishlistCount = wishlist.length;
+
   if (!menuOpen) return null;
 
   const handleDevLogin = () => {
@@ -49,9 +51,17 @@ export default function MobileMenu({
       <Link href="/contact" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
         Contact
       </Link>
-      <Link href="/wishlist" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
-        Wishlist ({wishlistCount})
-      </Link>
+
+      {/* Wishlist link as text */}
+      {isAuthenticated && (
+        <Link
+          href="/wishlist"
+          className={themeColors.navLink}
+          onClick={() => setMenuOpen(false)}
+        >
+          Wishlist ({wishlistCount})
+        </Link>
+      )}
 
       {/* Auth Links */}
       {!isAuthenticated ? (
@@ -62,10 +72,15 @@ export default function MobileMenu({
           <Link href="/signup" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
             Signup
           </Link>
-          <Link href="/forgot-password" className={themeColors.navLink} onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/forgot-password"
+            className={themeColors.navLink}
+            onClick={() => setMenuOpen(false)}
+          >
             Forgot Password
           </Link>
 
+          {/* Dev Login */}
           {isDev && (
             <button
               onClick={handleDevLogin}
@@ -102,7 +117,6 @@ export default function MobileMenu({
 
       {/* Mobile Theme Toggle */}
       <div className="mt-2">
-        {/* Same ToggleButton as desktop */}
         <ToggleButton />
       </div>
     </div>

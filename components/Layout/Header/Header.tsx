@@ -103,8 +103,6 @@ export default function Header() {
           isDev={isDev}
           login={login}
           logout={logout}
-          itemCount={0}
-          wishlistCount={0}
           themeColors={themeColors}
         />
       </div>
