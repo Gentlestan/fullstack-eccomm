@@ -13,6 +13,9 @@ export const colors: {
       navLink: "text-gray-100 hover:underline",
       icon: "text-white hover:text-gray-700",
       shadow: "shadow-md",
+      border: "border border-gray-300",
+      inputBg: "bg-gray-800 text-white",
+      
     },
     dark: {
       bg: "bg-white",
@@ -20,6 +23,8 @@ export const colors: {
       navLink: "text-gray-900 hover:underline",
       icon: "text-gray-900 hover:text-gray-300",
       shadow: "shadow-md",
+      border: "border border-gray-700",
+      inputBg: "bg-white text-gray-900",
     },
   },
 

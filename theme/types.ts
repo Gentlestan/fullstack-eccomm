@@ -13,6 +13,8 @@ export interface HeaderTheme {
   navLink: string;
   icon: string;
   shadow: string;
+  border: string;
+  inputBg: string;
 }
 
 export interface FooterTheme {
