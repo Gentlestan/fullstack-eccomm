@@ -46,3 +46,18 @@ export interface ProductTheme {
   addToCart: string;
   wishlist: string;
 }
+
+
+export interface ContactTheme {
+  bg: string;
+  text: string;
+  cardBg: string;
+  border: string;
+  subText: string;
+  muted: string;
+  inputBg: string;
+  inputText: string;
+  inputBorder: string;
+  theme: string;
+  buttonPrimary: string;
+}

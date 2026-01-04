@@ -1,9 +1,10 @@
-import { ThemedSection, HeaderTheme, FooterTheme, HeroTheme, ProductTheme } from "./types";
+import { ThemedSection, HeaderTheme, FooterTheme, HeroTheme, ProductTheme, ContactTheme } from "./types";
 
 export const colors: {
   header: ThemedSection<HeaderTheme>;
   footer: ThemedSection<FooterTheme>;
   hero: ThemedSection<HeroTheme>;
+  contact: ThemedSection<ContactTheme>; 
   product: ThemedSection<ProductTheme>;
 } = {
   header: {
@@ -89,6 +90,35 @@ export const colors: {
       price: "text-blue-300",
       addToCart: "bg-blue-400 text-gray-900",
       wishlist: "bg-white text-black",
+    },
+  },
+
+  contact: {
+    light: {
+      bg: "bg-white",
+      text: "text-gray-900",
+      cardBg: "bg-gray-100",
+      border: "border border-gray-300",
+      subText: "text-gray-600",
+      muted: "text-gray-500",
+      inputBg: "bg-white text-gray-900",
+      inputText: "text-gray-900",
+      inputBorder: "border border-gray-300",
+      theme: "bg-blue-600 text-white hover:bg-blue-700",
+      buttonPrimary: "bg-blue-600 text-white hover:bg-blue-700",
+    },
+    dark: {
+      bg: "bg-gray-900",
+      text: "text-gray-100",
+      cardBg: "bg-gray-800",
+      border: "border border-gray-700",
+      subText: "text-gray-300",
+      muted: "text-gray-400",
+      inputBg: "bg-gray-800 text-white",
+      inputText: "text-white",
+      inputBorder: "border border-gray-700",
+      theme: "bg-blue-500 text-white hover:bg-blue-600",
+      buttonPrimary: "bg-blue-500 text-white hover:bg-blue-600",
     },
   },
 };
