@@ -54,6 +54,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       hydrate: async () => {
+        set({ isLoading: true });
         try {
           const res = await fetch("/api/auth/me", {
             credentials: "include",
@@ -69,12 +70,22 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch {
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          // optional: dev fallback
+          if (process.env.NODE_ENV === "development") {
+            set({
+              user: { id: "1", email: "dev@example.com", role: "user" },
+              token: "dev-token",
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          } else {
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+          }
         }
       },
     }),

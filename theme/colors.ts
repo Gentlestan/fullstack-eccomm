@@ -16,6 +16,7 @@ export const colors: {
       shadow: "shadow-md",
       border: "border border-gray-300",
       inputBg: "bg-gray-800 text-white",
+      cardBg: "#f9fafb", 
       
     },
     dark: {
@@ -26,6 +27,7 @@ export const colors: {
       shadow: "shadow-md",
       border: "border border-gray-700",
       inputBg: "bg-white text-gray-900",
+      cardBg: "#374151",
     },
   },
 

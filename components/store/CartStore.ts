@@ -1,36 +1,33 @@
-"use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Product } from "@/lib/types";
 
-interface CartItem {
-  product: Product;
+export interface CartItem {
+  product: Product;  // store full product
   qty: number;
 }
 
 interface CartState {
   items: CartItem[];
+  itemCount: number;
 
   addToCart: (product: Product) => void;
   removeFromCart: (id: string) => void;
   increaseQty: (id: string) => void;
   decreaseQty: (id: string) => void;
-
-  itemCount: number; // unique product count
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      itemCount: 0, // ✅ add initial state for itemCount
+      itemCount: 0,
 
       addToCart: (product) => {
         const { items } = get();
         const exists = items.find((i) => i.product.id === product.id);
 
-        let updatedItems;
+        let updatedItems: CartItem[];
         if (exists) {
           updatedItems = items.map((i) =>
             i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i
@@ -60,6 +57,7 @@ export const useCartStore = create<CartState>()(
             i.product.id === id ? { ...i, qty: i.qty - 1 } : i
           )
           .filter((i) => i.qty > 0);
+
         set({ items: updatedItems, itemCount: updatedItems.length });
       },
     }),

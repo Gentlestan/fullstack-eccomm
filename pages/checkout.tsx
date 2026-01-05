@@ -1,12 +1,12 @@
-"use client";
-
 import { useCartStore } from "@/components/store/CartStore";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 export default function CheckoutPage() {
-     console.log("PAYSTACK KEY:", process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY);
   const { items } = useCartStore();
-  const totalPrice = items.reduce((acc, i) => acc + i.qty * i.product.price, 0);
+  const totalPrice = items.reduce(
+    (acc, i) => acc + i.qty * i.product.price,
+    0
+  );
 
   if (items.length === 0) {
     return (

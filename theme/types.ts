@@ -15,6 +15,7 @@ export interface HeaderTheme {
   shadow: string;
   border: string;
   inputBg: string;
+  cardBg: string;
 }
 
 export interface FooterTheme {
