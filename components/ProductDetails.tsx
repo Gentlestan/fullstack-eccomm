@@ -6,11 +6,11 @@ import { Product } from "@/lib/types";
 import AddToCartButton from "./AddToCartButton";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey, ProductTheme } from "@/theme";
-import { useCartContext } from "./CartContext"; // ✅ import context
+import { useCartContext } from "./CartContext";
 
 interface Props {
   product: Product;
-  themeColors?: ProductTheme; // optional theme override
+  themeColors?: ProductTheme;
 }
 
 export default function ProductDetail({ product, themeColors }: Props) {
@@ -24,7 +24,9 @@ export default function ProductDetail({ product, themeColors }: Props) {
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  // ✅ THIS is what flying cart will use
+  const imageWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const increaseQty = () => setQuantity((q) => Math.min(q + 1, stockCount));
   const decreaseQty = () => setQuantity((q) => Math.max(q - 1, 1));
@@ -34,17 +36,16 @@ export default function ProductDetail({ product, themeColors }: Props) {
     currency: "NGN",
   }).format(Number(product.price) || 0);
 
-  // ✅ Get flying cart ref from context
   const { cartRef } = useCartContext();
 
   return (
     <div className={`max-w-6xl mx-auto px-4 py-8 ${colorsToUse.bg} ${colorsToUse.text}`}>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* LEFT - IMAGES */}
+
+        {/* LEFT — IMAGES */}
         <div className="md:col-span-6">
-          <div className="border rounded-lg p-2">
+          <div ref={imageWrapperRef} className="border rounded-lg p-2">
             <Image
-              ref={imageRef}
               src={images[selectedImage]}
               alt={product.name}
               width={500}
@@ -59,14 +60,13 @@ export default function ProductDetail({ product, themeColors }: Props) {
               {images.map((img, idx) => (
                 <button
                   key={idx}
-                  aria-label={`View image ${idx + 1}`}
                   onClick={() => setSelectedImage(idx)}
-                  className={`border rounded-md p-1 transition ${
+                  className={`border rounded-md p-1 ${
                     selectedImage === idx ? "border-blue-500" : "border-gray-300"
                   }`}
                 >
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded overflow-hidden relative">
-                    <Image src={img} alt={`${product.name}-${idx}`} fill className="object-cover" />
+                  <div className="w-20 h-20 md:w-24 md:h-24 relative">
+                    <Image src={img} alt="" fill className="object-cover" />
                   </div>
                 </button>
               ))}
@@ -74,7 +74,7 @@ export default function ProductDetail({ product, themeColors }: Props) {
           )}
         </div>
 
-        {/* RIGHT - PRODUCT INFO */}
+        {/* RIGHT — PRODUCT INFO */}
         <div className="md:col-span-6 flex flex-col gap-4">
           <h1 className="text-2xl font-bold">{product.name}</h1>
           <p className="text-lg font-semibold">{formattedPrice}</p>
@@ -87,26 +87,17 @@ export default function ProductDetail({ product, themeColors }: Props) {
 
           <p className="text-sm leading-relaxed">{product.description}</p>
 
-          <div className="text-sm space-y-1 opacity-80">
-            <p>🚚 Delivery: 2–5 business days</p>
-            <p>🔁 7-day return policy</p>
-            <p>🛡️ 12-month warranty</p>
-            <p>✅ 100% original gadgets</p>
-          </div>
-
-          {/* Quantity Selector */}
+          {/* Quantity */}
           <div className="flex items-center gap-3 mt-2">
             <button
-              aria-label="Decrease quantity"
               onClick={decreaseQty}
               disabled={quantity === 1 || isOutOfStock}
               className="px-3 py-1 border rounded disabled:opacity-50"
             >
               −
             </button>
-            <span className="min-w-6 text-center">{quantity}</span>
+            <span>{quantity}</span>
             <button
-              aria-label="Increase quantity"
               onClick={increaseQty}
               disabled={quantity === stockCount || isOutOfStock}
               className="px-3 py-1 border rounded disabled:opacity-50"
@@ -115,26 +106,26 @@ export default function ProductDetail({ product, themeColors }: Props) {
             </button>
           </div>
 
-          {/* Add to Cart */}
+          {/* ✅ Add to Cart (FLYING CART WORKS) */}
           <AddToCartButton
             product={product}
             buttonClass={colorsToUse.addToCart}
-            imageRef={imageRef}
-            fullWidth={false}
+            imageRef={imageWrapperRef}
+            cartRef={cartRef}
             disabled={isOutOfStock}
-            cartRef={cartRef} // ✅ pass flying cart ref
           />
         </div>
       </div>
 
-      {/* MOBILE STICKY CTA */}
-      <div className="fixed bottom-0 left-0 right-0 md:hidden p-4 shadow-lg bg-white dark:bg-black">
+      {/* MOBILE CTA */}
+      <div className="fixed bottom-0 left-0 right-0 md:hidden p-4 bg-white dark:bg-black">
         <AddToCartButton
           product={product}
           buttonClass={colorsToUse.addToCart}
+          imageRef={imageWrapperRef}
+          cartRef={cartRef}
           fullWidth
           disabled={isOutOfStock}
-          cartRef={cartRef} // ✅ flying cart on mobile too
         />
       </div>
     </div>

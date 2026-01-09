@@ -8,8 +8,8 @@ import { RefObject } from "react";
 interface Props {
   product: Product;
   buttonClass?: string;
-  imageRef?: RefObject<HTMLImageElement | null>;
-  cartRef?: RefObject<HTMLDivElement | null>; // optional on purpose
+  imageRef?: RefObject<HTMLElement | null>; // flexible for img or div
+  cartRef?: RefObject<HTMLElement | null>;  // flexible
   fullWidth?: boolean;
   disabled?: boolean;
 }
@@ -33,18 +33,16 @@ export default function AddToCartButton({
     addToCart(product);
 
     const img = imageRef?.current;
-
-    // 🔥 CRITICAL FIX: ref OR DOM fallback
     const cartIcon =
       cartRef?.current ??
-      (document.getElementById("cart-icon") as HTMLDivElement | null);
+      (document.getElementById("cart-icon") as HTMLElement | null);
 
     if (!img || !cartIcon) return;
 
     const imgRect = img.getBoundingClientRect();
     const cartRect = cartIcon.getBoundingClientRect();
 
-    const clone = img.cloneNode(true) as HTMLImageElement;
+    const clone = img.cloneNode(true) as HTMLElement;
     clone.style.position = "fixed";
     clone.style.left = `${imgRect.left}px`;
     clone.style.top = `${imgRect.top}px`;
@@ -59,13 +57,9 @@ export default function AddToCartButton({
     document.body.appendChild(clone);
 
     const deltaX =
-      cartRect.left +
-      cartRect.width / 2 -
-      (imgRect.left + imgRect.width / 2);
+      cartRect.left + cartRect.width / 2 - (imgRect.left + imgRect.width / 2);
     const deltaY =
-      cartRect.top +
-      cartRect.height / 2 -
-      (imgRect.top + imgRect.height / 2);
+      cartRect.top + cartRect.height / 2 - (imgRect.top + imgRect.height / 2);
 
     requestAnimationFrame(() => {
       clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.2)`;

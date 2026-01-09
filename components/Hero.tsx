@@ -24,25 +24,30 @@ export default function Hero() {
   // Mount check
   useEffect(() => setMounted(true), []);
 
-  // Load hero items
+  // Fetch hero items from API (mock for now)
   useEffect(() => {
     async function loadHero() {
-      const res = await fetch("/api/hero");
-      const json = await res.json();
-      setItems(json);
-      setLoading(false);
+      try {
+        const res = await fetch("/api/hero");
+        const json: HeroData[] = await res.json();
+        setItems(json);
+      } catch (err) {
+        console.error("Failed to load hero data:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadHero();
   }, []);
 
   // Auto-rotate slider every 7s
   useEffect(() => {
-    if (hoverRef.current) return;
+    if (hoverRef.current || items.length === 0) return;
     const id = setInterval(() => {
       setIndex((prev) => (prev + 1) % items.length);
     }, 7000);
     return () => clearInterval(id);
-  }, [items.length]);
+  }, [items]);
 
   if (!mounted) return null;
 
@@ -74,7 +79,7 @@ export default function Hero() {
       onMouseEnter={() => (hoverRef.current = true)}
       onMouseLeave={() => (hoverRef.current = false)}
     >
-      {/* IMAGE CONTAINER */}
+      {/* IMAGE */}
       <div className="flex-1 relative flex justify-center order-1 md:order-2 w-full md:max-w-md">
         <img
           src={data.image}
@@ -110,7 +115,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* TEXT CONTAINER */}
+      {/* TEXT */}
       <div className="flex-1 space-y-4 text-left order-2 md:order-1">
         <h1 className="text-3xl md:text-4xl font-bold">{data.title}</h1>
         <p className={`text-sm md:text-base mb-6 ${themeColors.subtitle}`}>

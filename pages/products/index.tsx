@@ -8,14 +8,14 @@ import ProductSkeleton from "@/components/skeletons/ProductSkeleton";
 import ProductCard from "@/components/ProductCard";
 import CategoryTabs from "@/components/CategoryTabs";
 import { filterAndSortProducts, SortOption } from "@/lib/productUtils";
-import { useCartContext } from "@/components/CartContext"; // ✅ use context
+import { useCartContext } from "@/components/CartContext";
 
 const PRODUCTS_PER_PAGE_DESKTOP = 12;
 const PRODUCTS_PER_PAGE_MOBILE = 6;
 
 export default function ProductsIndexPage() {
   const { resolvedTheme } = useTheme();
-  const { cartRef } = useCartContext(); // ✅ get flying cart ref automatically
+  const { cartRef } = useCartContext();
 
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
   const themeColors = colors.product[themeKey];
@@ -57,10 +57,15 @@ export default function ProductsIndexPage() {
     sortBy,
   });
 
-  const totalPages = Math.ceil(filteredAndSorted.length / PRODUCTS_PER_PAGE);
+  const totalPages = Math.ceil(
+    filteredAndSorted.length / PRODUCTS_PER_PAGE
+  );
+
   const paginatedProducts = filteredAndSorted.slice(
-    (currentPage - 1) * PRODUCTS_PER_PAGE,
-    currentPage * PRODUCTS_PER_PAGE
+    0,
+    isMobile
+      ? currentPage * PRODUCTS_PER_PAGE
+      : currentPage * PRODUCTS_PER_PAGE
   );
 
   return (
@@ -82,6 +87,7 @@ export default function ProductsIndexPage() {
         />
       )}
 
+      {/* Search & Sort */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mt-4 gap-4">
         <input
           type="text"
@@ -109,6 +115,7 @@ export default function ProductsIndexPage() {
         </select>
       </div>
 
+      {/* Products Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
           {Array.from({ length: PRODUCTS_PER_PAGE }).map((_, i) => (
@@ -121,9 +128,59 @@ export default function ProductsIndexPage() {
             <ProductCard
               key={product.id}
               product={product}
-              cartRef={cartRef} // ✅ now works with flying cart automatically
+              cartRef={cartRef}
             />
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center mt-10 gap-3 flex-wrap">
+          {!isMobile && (
+            <>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.max(p - 1, 1))
+                }
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-lg border ${themeColors.border} ${
+                  currentPage === 1
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+              >
+                Previous
+              </button>
+
+              <span className="px-4 py-2 font-semibold">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded-lg border ${themeColors.border} ${
+                  currentPage === totalPages
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+              >
+                Next
+              </button>
+            </>
+          )}
+
+          {isMobile && currentPage < totalPages && (
+            <button
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className={`px-6 py-3 rounded-lg font-semibold ${themeColors.addToCart}`}
+            >
+              Load More
+            </button>
+          )}
         </div>
       )}
     </section>
