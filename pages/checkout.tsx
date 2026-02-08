@@ -1,26 +1,20 @@
-import { useCartStore } from "@/components/store/CartStore";
+"use client";
+
 import CheckoutForm from "@/components/checkout/CheckoutForm";
+import { useCartStore } from "@/components/store/CartStore";
 
 export default function CheckoutPage() {
-  const { items } = useCartStore();
-  const totalPrice = items.reduce(
-    (acc, i) => acc + i.qty * i.product.price,
-    0
-  );
-
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-        <p className="text-gray-600 mb-3">Your cart is empty.</p>
-        <a href="/cart" className="text-blue-500 underline">Go back to cart</a>
-      </div>
-    );
-  }
+  const items = useCartStore((s) => s.items);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="max-w-6xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
-      <CheckoutForm items={items} totalPrice={totalPrice} />
+
+      {items.length === 0 ? (
+        <p className="text-red-500">Your cart is empty.</p>
+      ) : (
+        <CheckoutForm items={items} />
+      )}
     </div>
   );
 }

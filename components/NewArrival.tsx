@@ -8,11 +8,12 @@ import ProductCard from "./ProductCard";
 import ProductSkeleton from "./skeletons/ProductSkeleton";
 import CategoryTabs from "./CategoryTabs";
 import Link from "next/link";
-import { useCartContext } from "./CartContext"; // ✅ get flying cart ref from context
+import { useCartContext } from "./CartContext";
+import { fetchAllProducts } from "@/lib/api"; // ✅ returns Product[]
 
 export default function NewArrival() {
   const { resolvedTheme } = useTheme();
-  const { cartRef } = useCartContext(); // ✅ no more prop
+  const { cartRef } = useCartContext();
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,16 +23,21 @@ export default function NewArrival() {
 
   useEffect(() => setMounted(true), []);
 
-  // Fetch products
+  // Fetch products from API
   useEffect(() => {
     async function loadProducts() {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const res = await fetch(`${baseUrl}/products`);
-      const data = (await res.json()) as Product[];
-      setProducts(data);
-      setFiltered(data);
-      setLoading(false);
+      try {
+        const data: Product[] = await fetchAllProducts(); // ✅ always Product[]
+
+        setProducts(data);
+        setFiltered(data);
+      } catch (err) {
+        console.error("NewArrival API error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
+
     loadProducts();
   }, []);
 
@@ -54,22 +60,23 @@ export default function NewArrival() {
   }
 
   return (
-    <section className={`mt-10 px-6 mb-8 md:px-10 max-w-7xl mx-auto ${themeColors.bg} ${themeColors.text}`}>
+    <section
+      className={`mt-10 px-6 mb-8 md:px-10 max-w-7xl mx-auto ${themeColors.bg} ${themeColors.text}`}
+    >
       <h2 className="text-2xl md:text-3xl font-bold mb-6">New Arrivals</h2>
 
+      {/* Category Filter Tabs */}
       <CategoryTabs products={products} onFilter={setFiltered} />
 
+      {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
         {filtered.slice(0, visibleCount).map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            cartRef={cartRef} // ✅ flying cart now works
-          />
+          <ProductCard key={product.id} product={product} cartRef={cartRef} />
         ))}
       </div>
 
-      {visibleCount < filtered.length && (
+      {/* Load More / View All Buttons */}
+      {visibleCount < filtered.length ? (
         <div className="flex justify-center mt-8">
           <button
             className={`px-6 py-3 rounded-lg font-semibold ${themeColors.addToCart} hover:scale-105 transition`}
@@ -78,9 +85,7 @@ export default function NewArrival() {
             View More
           </button>
         </div>
-      )}
-
-      {visibleCount >= filtered.length && (
+      ) : (
         <div className="flex justify-center mt-8">
           <Link href="/products">
             <button className={`px-6 py-3 rounded-lg font-semibold ${themeColors.addToCart}`}>

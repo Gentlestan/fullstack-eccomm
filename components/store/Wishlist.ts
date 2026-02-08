@@ -1,31 +1,21 @@
-"use client";
-
+// components/store/Wishlist.ts
 import { create } from "zustand";
 
-interface WishlistStore {
-  wishlist: string[];
-  toggle: (id: string) => void;
-  isLiked: (id: string) => boolean;
+export interface WishlistState {
+  items: number[];                  // store product IDs
+  toggle: (id: number) => void;     // add/remove a product from wishlist
+  isLiked: (id: number) => boolean; // check if product is in wishlist
 }
 
-export const useWishlistStore = create<WishlistStore>((set, get) => ({
-  wishlist: typeof window !== "undefined"
-    ? JSON.parse(localStorage.getItem("wishlist") || "[]")
-    : [],
+export const useWishlistStore = create<WishlistState>((set, get) => ({
+  items: [],
 
-  toggle: (id: string) => {
-    const current = get().wishlist;
-    let updated: string[];
+  toggle: (id: number) =>
+    set((state) => ({
+      items: state.items.includes(id)
+        ? state.items.filter((item) => item !== id)
+        : [...state.items, id],
+    })),
 
-    if (current.includes(id)) {
-      updated = current.filter(item => item !== id);
-    } else {
-      updated = [...current, id];
-    }
-
-    localStorage.setItem("wishlist", JSON.stringify(updated));
-    set({ wishlist: updated });
-  },
-
-  isLiked: (id: string) => get().wishlist.includes(id),
+  isLiked: (id: number) => get().items.includes(id),
 }));

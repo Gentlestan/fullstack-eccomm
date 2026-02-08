@@ -1,35 +1,32 @@
 // /pages/api/hero.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { HeroData } from "@/lib/types";
-import { products } from "@/lib/mock/products";
+import { fetchHeroProducts } from "@/lib/api";
+import type { Product, HeroData, Image } from "@/lib/types";
+import { getImageAt } from "@/lib/utils";
 
-// Mock hero configuration for now (can be replaced with DB later)
-const heroConfig = [
-  { slug: "dell-xps-15", heroImage: "/assets/images/hero/dell-xps15-2.webp" },
-  { slug: "apple-iphone-15-pro-max", heroImage: "/assets/images/hero/iphone15-promax-1.jpg" },
-  { slug: "macbook-air-m2", heroImage: "/assets/images/hero/hp-spectra-x360-3.jpg" },
-];
-
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<HeroData[]>
+  res: NextApiResponse<HeroData[] | { message: string }>
 ) {
-  // Build hero data dynamically
-  const data: HeroData[] = heroConfig
-    .map((item) => {
-      // Find matching product
-      const product = products.find(
-        (p) => p.slug.toLowerCase() === item.slug.toLowerCase()
+  try {
+    // Fetch products for the hero section
+    const products: Product[] = await fetchHeroProducts();
+
+    const heroData: HeroData[] = products.map((product: Product) => {
+      // First, get all images that are Image objects and marked as hero
+      const heroImages = product.images?.filter(
+        (img): img is Image & { is_hero?: boolean } =>
+          typeof img !== "string" && !!img.is_hero
       );
 
-      if (!product) {
-        console.warn(`Product not found for hero: ${item.slug}`);
-        return null; // skip if product is missing
-      }
+      // Use the first hero image if available, otherwise fallback to the first image
+      const heroImage =
+        getImageAt(heroImages || [], 0) || getImageAt(product.images || [], 0);
 
       return {
         title: product.name,
         subtitle: product.description,
+        image: heroImage,
         readMore: {
           label: "Read More",
           href: `/products/${product.slug}`,
@@ -39,11 +36,12 @@ export default function handler(
           label: "Add to Cart",
           slug: product.slug,
         },
-        // Use hero-specific image if set, otherwise fallback to product image
-        image: item.heroImage ?? product.images[0],
       };
-    })
-    .filter(Boolean) as HeroData[];
+    });
 
-  res.status(200).json(data);
+    res.status(200).json(heroData);
+  } catch (error) {
+    console.error("Hero API error:", error);
+    res.status(500).json({ message: "Failed to load hero data" });
+  }
 }

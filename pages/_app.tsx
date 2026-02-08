@@ -4,7 +4,7 @@ import { ThemeProvider } from "next-themes";
 import Layout from "@/components/Layout/layout";
 import { Roboto } from "next/font/google";
 import { CartProvider } from "@/components/CartContext"; // ✅ import provider
-
+import { AuthProvider } from "@/components/context/AuthContext";
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700"], 
@@ -16,9 +16,11 @@ export default function App({ Component, pageProps }: AppProps) {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
         {/* ✅ Wrap with CartProvider so cartRef is available */}
         <CartProvider>
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
+          <AuthProvider>
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          </AuthProvider>
         </CartProvider>
       </ThemeProvider>
     </main>

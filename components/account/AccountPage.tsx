@@ -6,18 +6,17 @@ import { authstore } from "@/components/store/authstore";
 import AccountInfo from "@/components/account/AccountInfo";
 import EditProfileForm from "@/components/account/EditProfileForm";
 import ChangePasswordForm from "@/components/account/ChangePasswordForm";
+import DeleteAccountButton from "./DeleteAccountButton";
 import AccountSkeleton from "@/components/skeletons/AccountSkeleton";
 
 export default function AccountPage() {
-  // Destructure store
-  const { user, fetchUser, isLoading, deleteAccount } = authstore();
+  const { user, fetchUser, isLoading } = authstore();
 
-  // Fetch user on mount if not loaded
+  // Fetch user on mount
   useEffect(() => {
     if (!user) fetchUser();
   }, [user, fetchUser]);
 
-  // Loading skeleton
   if (isLoading || !user) {
     return (
       <ProtectedRoute>
@@ -26,27 +25,12 @@ export default function AccountPage() {
     );
   }
 
-  // Delete account handler
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-
-    try {
-      await deleteAccount?.(); // optional chaining in case it's undefined
-      alert("Account deleted successfully.");
-      // Redirect to homepage
-      window.location.href = "/";
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete account. Please try again.");
-    }
-  };
-
   return (
     <ProtectedRoute>
       <main className="max-w-4xl mx-auto p-6 space-y-6">
         <h1 className="text-2xl font-semibold">My Account</h1>
 
-        {/* User info */}
+        {/* Display user info */}
         <AccountInfo user={user} />
 
         {/* Edit profile */}
@@ -56,14 +40,7 @@ export default function AccountPage() {
         <ChangePasswordForm />
 
         {/* Delete account */}
-        <div className="pt-4 border-t">
-          <button
-            onClick={handleDelete}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
-          >
-            Delete Account
-          </button>
-        </div>
+        <DeleteAccountButton />
       </main>
     </ProtectedRoute>
   );

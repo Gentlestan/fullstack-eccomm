@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey } from "@/theme";
+import { authstore } from "@/components/store/authstore";
 
 export default function ForgotPasswordPage() {
   const { resolvedTheme } = useTheme();
@@ -13,24 +14,20 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 🔹 Use the store method
+  const forgotPassword = authstore((state) => state.forgotPassword);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
     try {
-      // ✅ This is where the backend endpoint will handle the request
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-      setMessage(data.message || "Check your email for a reset link.");
-    } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong. Please try again.");
+      // 🔹 Call the centralized authstore method
+      const msg = await forgotPassword(email);
+      setMessage(msg);
+    } catch (error: any) {
+      setMessage(error?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,24 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey } from "@/theme";
-import { createOrder } from "@/services/order.service";
-import { useOrdersStore } from "../store/orderStore";
-import { CartItem } from "../store/CartStore"; // ✅ use CartItem type from store
+import { CartItem } from "@/components/store/CartStore";
+import { authstore } from "@/components/store/authstore";
+
+// --- Paystack types ---
+declare global {
+  interface Window {
+    PaystackPop?: {
+      setup: (options: any) => {
+        openIframe: () => void;
+      };
+    };
+  }
+}
 
 interface CheckoutFormProps {
-  totalPrice: number;
   items: CartItem[];
 }
 
-export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
+export default function CheckoutForm({ items }: CheckoutFormProps) {
   const { resolvedTheme } = useTheme();
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
   const themeColors = colors.product[themeKey];
 
-  const ordersStore = useOrdersStore();
-
+  const isProcessingRef = useRef(false);
+  const [loading, setLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<
+    "" | "success" | "error" | "closed" | "invalid_form" | "empty_cart" | "paystack_not_ready" | "out_of_stock"
+  >("");
+  const [paystackReady, setPaystackReady] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -28,15 +41,9 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
     country: "",
   });
 
-  const [loading, setLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<
-    "" | "success" | "closed" | "error" | "invalid_form" | "empty_cart" | "paystack_not_ready"
-  >("");
-  const [paystackReady, setPaystackReady] = useState(false);
-
-  // Load Paystack script once
+  // Load Paystack script
   useEffect(() => {
-    if ((window as any).PaystackPop) {
+    if (window.PaystackPop) {
       setPaystackReady(true);
       return;
     }
@@ -45,6 +52,7 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
     script.onload = () => setPaystackReady(true);
+    script.onerror = () => setPaystackReady(false);
     document.body.appendChild(script);
   }, []);
 
@@ -53,70 +61,122 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
   };
 
   const isFormValid =
-    form.name && form.email && form.phone && form.address && form.city && form.country;
+    !!form.name &&
+    !!form.email &&
+    !!form.phone &&
+    !!form.address &&
+    !!form.city &&
+    !!form.country;
 
-  const handlePaystackPayment = () => {
-    if (!paystackReady) return setPaymentStatus("paystack_not_ready");
-    if (!items.length) return setPaymentStatus("empty_cart");
-    if (!isFormValid) return setPaymentStatus("invalid_form");
+  const totalPrice = items.reduce(
+    (sum, item) => sum + (item.product?.price ?? 0) * (item.qty ?? 0),
+    0
+  );
 
+  const shippingAddress = `${form.address}, ${form.city}, ${form.country}`;
+
+  // ------------------------
+  // PAYSTACK PAYMENT HANDLER
+  // ------------------------
+  const handlePaystackPayment = async () => {
+    if (loading) return;
     setLoading(true);
     setPaymentStatus("");
 
-    const PaystackPop = (window as any).PaystackPop;
-    if (!PaystackPop) {
-      console.error("PaystackPop not available");
-      setPaymentStatus("paystack_not_ready");
-      setLoading(false);
-      return;
-    }
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const authFetch = authstore.getState().authFetch;
+      if (!API_URL || !authFetch) throw new Error("Auth not ready");
 
-    const handler = PaystackPop.setup({
-      key: process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY,
-      email: form.email,
-      amount: totalPrice * 100,
-      currency: "NGN",
-      metadata: {
-        custom_fields: [
-          {
-            display_name: form.name,
-            variable_name: "mobile_number",
-            value: form.phone,
-          },
-        ],
-      },
-
-      callback: function (response: any) {
-        createOrder({
-          items: items.map(({ product, qty }) => ({
-            product_id: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: qty,
-          })),
-          total_amount: totalPrice,
-          payment_reference: response.reference,
-          shipping_address: `${form.address}, ${form.city}, ${form.country}`,
-        })
-          .then((newOrder) => {
-            ordersStore.addOrder(newOrder);
-            setPaymentStatus("success");
-          })
-          .catch((err) => {
-            console.error("Order creation failed:", err);
-            setPaymentStatus("error");
-          })
-          .finally(() => setLoading(false));
-      },
-
-      onClose: function () {
+      // Validate cart with backend
+      const validateRes = await authFetch(`${API_URL}/cart/validate/`);
+      const validateData = await validateRes.json();
+      if (!validateRes.ok || !validateData.valid) {
+        setPaymentStatus("out_of_stock");
         setLoading(false);
-        setPaymentStatus("closed");
-      },
-    });
+        return;
+      }
 
-    handler.openIframe();
+      if (!items.length) {
+        setPaymentStatus("empty_cart");
+        setLoading(false);
+        return;
+      }
+
+      if (!isFormValid) {
+        setPaymentStatus("invalid_form");
+        setLoading(false);
+        return;
+      }
+
+      if (!window.PaystackPop) {
+        setPaymentStatus("paystack_not_ready");
+        setLoading(false);
+        return;
+      }
+
+      const orderItems = items.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.qty,
+      }));
+
+      // ✅ Correct callback function
+      const handler = window.PaystackPop.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY || "",
+        email: form.email,
+        amount: totalPrice * 100,
+        currency: "NGN",
+
+        callback(response: { reference: string }) {
+          if (isProcessingRef.current) return;
+          isProcessingRef.current = true;
+
+          (async () => {
+            try {
+              const res = await authFetch(`${API_URL}/payments/paystack/verify/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  reference: response.reference,
+                  items: orderItems,
+                  shipping_address: shippingAddress,
+                }),
+              });
+
+              const data = await res.json();
+              if (!res.ok) throw new Error("Payment verification failed");
+
+              authstore.getState().clearCart();
+              setPaymentStatus("success");
+            } catch (err) {
+              console.error("Payment verification error:", err);
+              setPaymentStatus("error");
+            } finally {
+              isProcessingRef.current = false;
+              setLoading(false);
+            }
+          })();
+        },
+
+        onClose() {
+          setPaymentStatus("closed");
+          setLoading(false);
+        },
+      });
+
+      handler.openIframe();
+    } catch (err) {
+      console.error("Payment error:", err);
+      setPaymentStatus("error");
+      setLoading(false);
+    }
   };
+
+  // ------------------------
+  // Determine if checkout is allowed
+  // ------------------------
+  const hasInvalidItems = items.some((item) => item.qty > item.product.stock);
+  const canPay = isFormValid && items.length && paystackReady && !hasInvalidItems;
 
   return (
     <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 ${themeColors.bg} ${themeColors.text}`}>
@@ -130,7 +190,7 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
             name={field}
             type={field === "email" ? "email" : "text"}
             placeholder={`${field.charAt(0).toUpperCase() + field.slice(1)} *`}
-            value={(form as any)[field]}
+            value={form[field as keyof typeof form]}
             onChange={handleChange}
             className={`border p-3 rounded-lg w-full focus:ring-2 ring-blue-400 ${themeColors.text} ${themeColors.bg}`}
           />
@@ -143,7 +203,7 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
               name={field}
               type="text"
               placeholder={`${field.charAt(0).toUpperCase() + field.slice(1)} *`}
-              value={(form as any)[field]}
+              value={form[field as keyof typeof form]}
               onChange={handleChange}
               className={`border p-3 rounded-lg w-full focus:ring-2 ring-blue-400 ${themeColors.text} ${themeColors.bg}`}
             />
@@ -152,19 +212,54 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
 
         <button
           onClick={handlePaystackPayment}
-          disabled={!paystackReady || loading}
-          className={`w-full ${themeColors.addToCart} py-3 rounded-lg hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+          disabled={!canPay || loading}
+          className={`w-full ${themeColors.addToCart} py-3 rounded-lg hover:scale-105 transition disabled:opacity-50`}
         >
-          {loading ? "Processing Payment..." : !paystackReady ? "Loading Payment..." : "Pay Now"}
+          {loading
+            ? "Processing Payment..."
+            : !paystackReady
+            ? "Loading Payment..."
+            : hasInvalidItems
+            ? "Some items exceed stock"
+            : "Pay Now"}
         </button>
 
-        {/* Feedback messages */}
-        {paymentStatus === "success" && <div className="mt-4 p-3 bg-green-100 text-green-700 rounded">🎉 Payment successful! Your order has been placed.</div>}
-        {paymentStatus === "closed" && <div className="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">Payment popup closed without completing.</div>}
-        {paymentStatus === "error" && <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">❌ Payment succeeded, but order creation failed.</div>}
-        {paymentStatus === "invalid_form" && <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">⚠️ Please fill in all required fields before checkout.</div>}
-        {paymentStatus === "empty_cart" && <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">⚠️ Your cart is empty.</div>}
-        {paymentStatus === "paystack_not_ready" && <div className="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">⚠️ Payment system is still loading. Please try again in a moment.</div>}
+        {/* Status messages */}
+        {paymentStatus === "success" && (
+          <div className="mt-4 p-3 bg-green-100 text-green-700 rounded">
+            🎉 Payment successful! Your order has been placed.
+          </div>
+        )}
+        {paymentStatus === "closed" && (
+          <div className="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">
+            Payment popup closed without completing.
+          </div>
+        )}
+        {paymentStatus === "error" && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            ❌ Payment verification failed or stock unavailable.
+          </div>
+        )}
+        {paymentStatus === "invalid_form" && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            ❌ Please fill all required fields.
+          </div>
+        )}
+        {paymentStatus === "empty_cart" && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            ❌ Your cart is empty.
+          </div>
+        )}
+        {paymentStatus === "paystack_not_ready" && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            ❌ Payment system not ready. Try again.
+          </div>
+        )}
+        {paymentStatus === "out_of_stock" && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            ❌ Some items in your cart are out of stock.
+          </div>
+        )}
       </div>
 
       {/* RIGHT — Order Summary */}
@@ -174,7 +269,7 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
         {items.map(({ product, qty }) => (
           <div key={product.id} className="flex justify-between text-sm">
             <span>{product.name} × {qty}</span>
-            <span>${(product.price * qty).toFixed(2)}</span>
+            <span>₦{(product.price * qty).toFixed(2)}</span>
           </div>
         ))}
 
@@ -182,7 +277,7 @@ export default function CheckoutForm({ totalPrice, items }: CheckoutFormProps) {
 
         <div className="flex justify-between text-lg font-semibold">
           <span>Total</span>
-          <span>${totalPrice.toFixed(2)}</span>
+          <span>₦{totalPrice.toFixed(2)}</span>
         </div>
       </div>
     </div>

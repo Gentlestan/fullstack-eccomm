@@ -1,27 +1,39 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { products } from "@/lib/mock/products";
+import { fetchAllProducts } from "@/lib/api";
+import { Product } from "@/lib/types";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { q } = req.query;
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Product[] | { message: string }>
+) {
+  try {
+    const { q } = req.query;
 
-  let result = products;
+    // Fetch all products with proper type
+    const allProducts: Product[] = await fetchAllProducts();
 
-  // ✅ SEARCH LOGIC
-  if (q && typeof q === "string") {
-    const query = q.toLowerCase().trim();
+    // Filter products based on search query
+    let result: Product[] = allProducts;
 
-    result = result.filter((product) =>
-      [
-        product.name,
-        product.brand,
-        product.category,
-        product.description,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    );
+    if (q && typeof q === "string") {
+      const query = q.toLowerCase().trim();
+
+      result = allProducts.filter((product: Product) =>
+        [
+          product.name,
+          product.brand,
+          product.category.name,
+          product.description,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      );
+    }
+
+    res.status(200).json(result);
+  } catch (error: unknown) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch products" });
   }
-
-  res.status(200).json(result);
 }

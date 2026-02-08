@@ -1,20 +1,50 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { products } from "@/lib/mock/products"; // adjust path to your data
-import ProductCard from "./ProductCard"; // adjust path to your existing card
-
-// Dynamically extract unique categories from your dataset
-const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))];
+import { useState, useMemo, useEffect } from "react";
+import { Product } from "@/lib/types";
+import { fetchAllProducts } from "@/lib/api";
+import ProductCard from "./ProductCard";
 
 export default function CategoryShowcase() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [loading, setLoading] = useState(true);
 
-  // Filter logic (client-side, instant)
+  /* ---------------------------
+     Load products from backend
+  --------------------------- */
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const data = await fetchAllProducts(); // fetch real products
+        setProducts(data);
+      } catch (err) {
+        console.error("Failed to fetch products for CategoryShowcase:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProducts();
+  }, []);
+
+  /* ---------------------------
+     Extract categories dynamically
+  --------------------------- */
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(products.map((p) => p.category?.name || "uncategorized")));
+    return ["all", ...cats];
+  }, [products]);
+
+  /* ---------------------------
+     Filter products by category
+  --------------------------- */
   const filteredProducts = useMemo(() => {
-    if (activeCategory === "all") return products.slice(0, 8); // show only 8 for homepage
-    return products.filter(p => p.category === activeCategory).slice(0, 8);
-  }, [activeCategory]);
+    if (activeCategory === "all") return products.slice(0, 8);
+    return products.filter((p) => p.category?.name === activeCategory).slice(0, 8);
+  }, [products, activeCategory]);
+
+  if (loading) return <p className="p-6 text-center">Loading products...</p>;
 
   return (
     <div className="w-full">

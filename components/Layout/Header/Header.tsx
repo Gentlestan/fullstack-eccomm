@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useEffect, useState, RefObject } from "react";
+import { useState, RefObject } from "react";
 import BarsIcon from "@/components/icons/Bars";
+import SearchBar from "./SearchBar";
 import ToggleButton from "@/components/icons/ToggleButton";
 import MobileMenu from "./MobileMenu";
-import { colors, ThemeKey } from "@/theme";
-import { useAuthStore } from "@/components/store/authstore";
-import { useWishlistStore } from "@/components/store/Wishlist";
-import { useCartStore } from "@/components/store/CartStore";
-
 import UserMenu from "./UserMenu";
-import SearchBar from "./SearchBar";
 import WishlistIcon from "./WishListIcon";
 import CartIcon from "./CartIcon";
 import AuthLinks from "./AuthLinks";
+
+import { colors, ThemeKey, HeaderTheme } from "@/theme";
+import { authstore } from "@/components/store/authstore";
+import { AuthUser } from "@/lib/types";
+import { useWishlistStore } from "@/components/store/Wishlist";
+import { useCartStore } from "@/components/store/CartStore";
 
 interface HeaderProps {
   cartRef: RefObject<HTMLDivElement | null>;
@@ -23,23 +24,20 @@ interface HeaderProps {
 
 export default function Header({ cartRef }: HeaderProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { isAuthenticated, user, login, logout } = useAuthStore();
-  const isDev = process.env.NODE_ENV === "development";
+  // ✅ Backend-aware auth state
+  const user = authstore((state) => state.user);
+  const logout = authstore((state) => state.logout);
 
-  const { wishlist } = useWishlistStore();
-  const wishlistCount = wishlist.length;
-
-  const { items } = useCartStore();
-  const cartCount = items.reduce((acc, i) => acc + i.qty, 0);
-
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  // Wishlist & cart counts
+  const wishlistCount = useWishlistStore((s) => s.items.length);
+  const cartCount = useCartStore((s) =>
+    s.items.reduce((acc, i) => acc + i.qty, 0)
+  );
 
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
-  const themeColors = colors.header[themeKey];
+  const themeColors: HeaderTheme = colors.header[themeKey];
 
   return (
     <header
@@ -48,54 +46,50 @@ export default function Header({ cartRef }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-6">
         {/* TOP BAR */}
         <div className="flex items-center justify-between py-4">
-          {/* Logo */}
           <Link href="/" className="text-xl font-semibold">
             Ecommerce
           </Link>
 
-          {/* Desktop Search + Theme Toggle */}
+          {/* Desktop search + toggle */}
           <div className="hidden md:flex items-center gap-4 flex-1 ml-6">
             <SearchBar themeColors={themeColors} />
             <ToggleButton />
           </div>
 
-          {/* Mobile Hamburger */}
-          <button
-            className="md:hidden"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
+          {/* Mobile hamburger */}
+          <button className="md:hidden" onClick={() => setMenuOpen((o) => !o)}>
             <BarsIcon />
           </button>
         </div>
 
         {/* BOTTOM BAR (Desktop) */}
         <div className="hidden md:flex items-center justify-between border-t pt-2 pb-2">
-          {/* Left: Main Links */}
+          {/* Left nav links */}
           <div className="flex items-center gap-6">
-            <Link href="/" className={themeColors.navLink}>Home</Link>
-            <Link href="/products" className={themeColors.navLink}>Products</Link>
-            <Link href="/contact" className={themeColors.navLink}>Contact</Link>
+            <Link href="/" className={themeColors.navLink}>
+              Home
+            </Link>
+            <Link href="/products" className={themeColors.navLink}>
+              Products
+            </Link>
+            <Link href="/contact" className={themeColors.navLink}>
+              Contact
+            </Link>
           </div>
 
-          {/* Right: Auth + Wishlist + Cart */}
+          {/* Right auth/cart/wishlist */}
           <div className="flex items-center gap-4">
-            {/* Sign In / Sign Up / Dev Login */}
-            <AuthLinks themeColors={themeColors} isDev={isDev} />
-
-            {/* User Menu */}
-            {isAuthenticated && user && (
-              <UserMenu user={user} logout={logout} themeColors={themeColors} />
+            {!user && <AuthLinks themeColors={themeColors} />}
+            {user && (
+              <UserMenu
+                user={user}
+                logout={logout}
+                themeColors={themeColors}
+                setMenuOpen={setMenuOpen}
+              />
             )}
-
-            {/* Wishlist */}
-            {isAuthenticated && <WishlistIcon count={wishlistCount} />}
-
-            {/* Cart */}
-            <CartIcon
-              count={cartCount}
-              refProp={cartRef}
-              isAuthenticated={isAuthenticated}
-            />
+            {user && <WishlistIcon count={wishlistCount} />}
+            <CartIcon count={cartCount} refProp={cartRef} isAuthenticated={!!user} />
           </div>
         </div>
 
@@ -103,13 +97,9 @@ export default function Header({ cartRef }: HeaderProps) {
         <MobileMenu
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
-          isAuthenticated={isAuthenticated}
           user={user}
-          isDev={isDev}
-          login={login}              // ✅ Pass login here
           logout={logout}
           themeColors={themeColors}
-          cartRef={cartRef}
         />
       </div>
     </header>

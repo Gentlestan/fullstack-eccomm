@@ -10,6 +10,7 @@ interface CategoryTabsProps {
   onFilter: (filtered: Product[]) => void;
 }
 
+// Define your tabs/categories
 const categories = [
   { label: "All", key: "all" },
   { label: "Phones", key: "phone" },
@@ -24,8 +25,8 @@ export default function CategoryTabs({ products, onFilter }: CategoryTabsProps) 
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
   const theme = colors.product[themeKey];
 
-  // Default: ALL
-  const [active, setActive] = useState("all");
+  // Default: "all" tab active
+  const [active, setActive] = useState<string>("all");
 
   function handleTabClick(key: string) {
     setActive(key);
@@ -33,7 +34,8 @@ export default function CategoryTabs({ products, onFilter }: CategoryTabsProps) 
     if (key === "all") {
       onFilter(products); // Show all products
     } else {
-      const filtered = products.filter((p) => p.category === key);
+      // Compare category.slug instead of category object
+      const filtered = products.filter((p) => p.category?.slug === key);
       onFilter(filtered);
     }
   }

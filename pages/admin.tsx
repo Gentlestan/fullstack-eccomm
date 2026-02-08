@@ -1,23 +1,24 @@
-// pages/admin.tsx
 "use client";
 
-import { useAuthStore } from "@/components/store/authstore";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { authstore } from "@/components/store/authstore";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function AdminPage() {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading } = authstore();
   const router = useRouter();
 
-  // Redirect if not authenticated or not admin
+  // 🔹 Redirect if not authenticated or not admin
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== "admin")) {
-      router.replace("/"); // redirect to home
+    if (!isLoading) {
+      if (!isAuthenticated || user?.role !== "admin") {
+        router.replace("/"); // redirect to home
+      }
     }
-  }, [isAuthenticated, isLoading, user, router]);
+  }, [isLoading, isAuthenticated, user?.role, router]);
 
-  // Show loading state while auth is being determined
+  // 🔹 Show loading state while auth is being determined
   if (isLoading || !isAuthenticated || user?.role !== "admin") {
     return <p className="p-6">Loading admin dashboard...</p>;
   }

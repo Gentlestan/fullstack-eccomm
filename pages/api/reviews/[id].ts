@@ -1,14 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { products } from "@/lib/mock/products";
+import { fetchProductBySlug } from "@/lib/api"; // JWT-ready helper
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  const product = products.find((p) => p.id === id);
-
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+  if (!id || typeof id !== "string") {
+    return res.status(400).json({ message: "Invalid product ID" });
   }
 
-  res.status(200).json(product.reviews ?? []);
+  try {
+    // 🔹 fetchProductBySlug uses authFetch internally
+    const product = await fetchProductBySlug(id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Return product reviews or empty array
+    res.status(200).json(product.reviews ?? []);
+  } catch (error) {
+    console.error("Fetch product reviews error:", error);
+    res.status(500).json({ message: "Failed to fetch reviews" });
+  }
 }

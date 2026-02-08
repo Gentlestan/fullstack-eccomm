@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useOrdersStore } from "@/components/store/orderStore";
+import { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import OrdersSkeleton from "@/components/skeletons/OrderSkeleton";
+import { useOrdersStore } from "@/components/store/orderStore";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey } from "@/theme";
 
@@ -10,61 +11,75 @@ export default function OrdersPage() {
   const { resolvedTheme } = useTheme();
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
 
-  // Use colors.product for card backgrounds and text (theme-aware)
   const cardColors = colors.product[themeKey];
-  // Use colors.header for page background & text
   const pageColors = colors.header[themeKey];
 
   const orders = useOrdersStore((state) => state.orders);
-  const setOrders = useOrdersStore((state) => state.setOrders);
+  const loadingStore = useOrdersStore((state) => state.loading);
+  const fetchOrders = useOrdersStore((state) => state.fetchOrders);
+  const startPolling = useOrdersStore((state) => state.startPolling);
+  const stopPolling = useOrdersStore((state) => state.stopPolling);
 
-  // Hydrate store from localStorage on mount
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-    setOrders(savedOrders);
-  }, [setOrders]);
+    const loadOrders = async () => {
+      setLoading(true);
+      await fetchOrders();
+      setLoading(false);
+    };
+
+    loadOrders();
+    startPolling(5000); // Poll every 5 seconds
+
+    return () => stopPolling();
+  }, [fetchOrders, startPolling, stopPolling]);
 
   return (
     <ProtectedRoute>
       <main className={`max-w-4xl mx-auto p-6 ${pageColors.bg} ${pageColors.text} space-y-6 mt-6 mb-6`}>
         <h1 className="text-2xl font-semibold mb-4">My Orders</h1>
 
-        {orders.length === 0 ? (
+        {(loading || loadingStore) ? (
+          <OrdersSkeleton />
+        ) : orders.length === 0 ? (
           <div className={`border rounded p-4 ${cardColors.bg} ${cardColors.text}`}>
             No orders yet.
           </div>
         ) : (
-          orders.map((order) => (
-            <div
-              key={order.id}
-              className={`border rounded p-4 flex flex-col space-y-2 ${cardColors.bg} ${cardColors.text}`}
-            >
-              <div className="flex justify-between font-medium">
-                <span>Order ID: {order.id}</span>
-                <span>Status: {order.status}</span>
+          orders
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map((order) => (
+              <div key={order.id} className={`border rounded p-4 flex flex-col space-y-2 ${cardColors.bg} ${cardColors.text}`}>
+                <div className="flex justify-between font-medium">
+                  <span>Order ID: {order.id ?? "N/A"}</span>
+                  <span>Status: {order.status ?? "Pending"}</span>
+                </div>
+                <div>Total Amount: ₦{(order.total_amount ?? 0).toFixed(2)}</div>
+                <div>
+                  Items:
+                  <ul className="ml-4 list-disc">
+                    {(order.items ?? []).map((item) => (
+                      <li key={item.product_id}>{item.name ?? "Unknown"} × {item.quantity ?? 0} (₦{(item.price ?? 0).toFixed(2)})</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>Shipping: {order.shipping_address ?? "N/A"}</div>
+                <div className="text-sm text-gray-400">
+                  Created at: {order.created_at ? new Date(order.created_at).toLocaleString() : "Unknown"}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {order.processing_at && <div>Processing: {new Date(order.processing_at).toLocaleString()}</div>}
+                  {order.shipped_at && <div>Shipped: {new Date(order.shipped_at).toLocaleString()}</div>}
+                  {order.delivered_at && <div>Delivered: {new Date(order.delivered_at).toLocaleString()}</div>}
+                  {order.cancelled_at && <div>Cancelled: {new Date(order.cancelled_at).toLocaleString()}</div>}
+                </div>
               </div>
-              <div>Total Amount: ${order.total_amount.toFixed(2)}</div>
-              <div>
-                Items:
-                <ul className="ml-4 list-disc">
-                  {order.items.map((item) => (
-                    <li key={item.product_id}>
-                      {item.name} × {item.quantity} (${item.price.toFixed(2)})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>Shipping: {order.shipping_address}</div>
-              <div className="text-sm text-gray-400">
-                Created at: {new Date(order.created_at).toLocaleString()}
-              </div>
-            </div>
-          ))
+            ))
         )}
-
-        {orders.length > 0 && (
+        {!loading && orders.length > 0 && (
           <p className="mt-6 text-sm text-gray-500">
-            Orders are currently stored in localStorage for frontend testing.
+            Orders are synced with the backend and update automatically.
           </p>
         )}
       </main>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Image from "next/image";
+import { motion, AnimatePresence, useMotionValue } from "framer-motion";
 import { Product } from "@/lib/types";
 import AddToCartButton from "./AddToCartButton";
 import { useTheme } from "next-themes";
 import { colors, ThemeKey, ProductTheme } from "@/theme";
 import { useCartContext } from "./CartContext";
+import { getImageAt } from "@/lib/utils";
 
 interface Props {
   product: Product;
@@ -20,12 +21,15 @@ export default function ProductDetail({ product, themeColors }: Props) {
 
   const stockCount = Number(product.stock) || 0;
   const isOutOfStock = stockCount <= 0;
-  const images = product.images?.length ? product.images : ["/placeholder.png"];
+
+  // ✅ Use getImageAt helper safely
+  const images: string[] = product.images && product.images.length > 0
+    ? product.images.map((_, idx) => getImageAt(product.images!, idx))
+    : ["/placeholder.png"];
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  // ✅ THIS is what flying cart will use
   const imageWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const increaseQty = () => setQuantity((q) => Math.min(q + 1, stockCount));
@@ -37,40 +41,63 @@ export default function ProductDetail({ product, themeColors }: Props) {
   }).format(Number(product.price) || 0);
 
   const { cartRef } = useCartContext();
+  const x = useMotionValue(0); // for drag
 
   return (
     <div className={`max-w-6xl mx-auto px-4 py-8 ${colorsToUse.bg} ${colorsToUse.text}`}>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-
         {/* LEFT — IMAGES */}
         <div className="md:col-span-6">
-          <div ref={imageWrapperRef} className="border rounded-lg p-2">
-            <Image
-              src={images[selectedImage]}
-              alt={product.name}
-              width={500}
-              height={500}
-              priority
-              className="rounded-lg object-cover w-full h-full"
-            />
+          <div ref={imageWrapperRef} className="border rounded-lg p-2 relative">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={images[selectedImage]}
+                src={images[selectedImage]}
+                alt={product.name}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="rounded-lg object-cover w-full h-full"
+              />
+            </AnimatePresence>
           </div>
 
+          {/* Thumbnails */}
           {images.length > 1 && (
-            <div className="flex gap-2 mt-4">
+            <motion.div
+              className="flex gap-2 mt-4 overflow-x-auto md:overflow-visible cursor-grab"
+              drag="x"
+              dragConstraints={{ left: -1000, right: 0 }}
+              style={{ x }}
+              whileTap={{ cursor: "grabbing" }}
+            >
               {images.map((img, idx) => (
-                <button
+                <motion.button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`border rounded-md p-1 ${
+                  className={`border rounded-md p-1 flex-shrink-0 ${
                     selectedImage === idx ? "border-blue-500" : "border-gray-300"
                   }`}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  layout
                 >
-                  <div className="w-20 h-20 md:w-24 md:h-24 relative">
-                    <Image src={img} alt="" fill className="object-cover" />
-                  </div>
-                </button>
+                  <motion.div className="w-20 h-20 md:w-24 md:h-24 relative overflow-hidden rounded-md" layout>
+                    <motion.img
+                      src={img}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className={`w-full h-full object-cover ${
+                        selectedImage === idx ? "ring-2 ring-blue-500" : ""
+                      }`}
+                      initial={{ opacity: 0.7 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </motion.div>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
 
@@ -78,13 +105,11 @@ export default function ProductDetail({ product, themeColors }: Props) {
         <div className="md:col-span-6 flex flex-col gap-4">
           <h1 className="text-2xl font-bold">{product.name}</h1>
           <p className="text-lg font-semibold">{formattedPrice}</p>
-
           {isOutOfStock ? (
             <span className="text-red-600 font-semibold">Out of stock</span>
           ) : (
             <span className="text-sm text-green-600">In stock ({stockCount})</span>
           )}
-
           <p className="text-sm leading-relaxed">{product.description}</p>
 
           {/* Quantity */}
@@ -106,7 +131,6 @@ export default function ProductDetail({ product, themeColors }: Props) {
             </button>
           </div>
 
-          {/* ✅ Add to Cart (FLYING CART WORKS) */}
           <AddToCartButton
             product={product}
             buttonClass={colorsToUse.addToCart}

@@ -9,6 +9,7 @@ import ProductCard from "@/components/ProductCard";
 import CategoryTabs from "@/components/CategoryTabs";
 import { filterAndSortProducts, SortOption } from "@/lib/productUtils";
 import { useCartContext } from "@/components/CartContext";
+import { fetchAllProducts } from "@/lib/api";
 
 const PRODUCTS_PER_PAGE_DESKTOP = 12;
 const PRODUCTS_PER_PAGE_MOBILE = 6;
@@ -22,6 +23,7 @@ export default function ProductsIndexPage() {
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [filtered, setFiltered] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,45 +31,59 @@ export default function ProductsIndexPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("price-asc");
 
-  const isMobile =
-    typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  const [isMobile, setIsMobile] = useState(false);
 
-  const PRODUCTS_PER_PAGE = isMobile
-    ? PRODUCTS_PER_PAGE_MOBILE
-    : PRODUCTS_PER_PAGE_DESKTOP;
+  /* -------------------------
+     Mount + device detection
+  ------------------------- */
+  useEffect(() => {
+    setMounted(true);
+    setIsMobile(window.innerWidth < 768);
+  }, []);
 
-  useEffect(() => setMounted(true), []);
-
+  /* -------------------------
+     Load products from API
+  ------------------------- */
   useEffect(() => {
     async function loadProducts() {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const res = await fetch(`${baseUrl}/products`);
-      const data = (await res.json()) as Product[];
-      setProducts(data);
-      setFiltered(data);
-      setLoading(false);
+      try {
+        const allProducts: Product[] = await fetchAllProducts();
+        setProducts(allProducts);
+        setFiltered(allProducts);
+      } catch (err) {
+        console.error("Failed to load products:", err);
+      } finally {
+        setLoading(false);
+      }
     }
+
     loadProducts();
   }, []);
 
   if (!mounted) return null;
 
+  /* -------------------------
+     Filtering & pagination
+  ------------------------- */
   const filteredAndSorted = filterAndSortProducts(filtered, {
     searchQuery,
     sortBy,
   });
 
-  const totalPages = Math.ceil(
-    filteredAndSorted.length / PRODUCTS_PER_PAGE
-  );
+  const PRODUCTS_PER_PAGE = isMobile
+    ? PRODUCTS_PER_PAGE_MOBILE
+    : PRODUCTS_PER_PAGE_DESKTOP;
+
+  const totalPages = Math.ceil(filteredAndSorted.length / PRODUCTS_PER_PAGE);
 
   const paginatedProducts = filteredAndSorted.slice(
     0,
-    isMobile
-      ? currentPage * PRODUCTS_PER_PAGE
-      : currentPage * PRODUCTS_PER_PAGE
+    currentPage * PRODUCTS_PER_PAGE
   );
 
+  /* -------------------------
+     Render
+  ------------------------- */
   return (
     <section
       className={`mt-10 px-6 md:px-10 max-w-7xl mx-auto ${themeColors.bg} ${themeColors.text}`}
@@ -77,10 +93,11 @@ export default function ProductsIndexPage() {
         Browse through thousands of electronics at the best prices.
       </p>
 
+      {/* Category Tabs */}
       {!loading && (
         <CategoryTabs
           products={products}
-          onFilter={(newFiltered) => {
+          onFilter={(newFiltered: Product[]) => {
             setFiltered(newFiltered);
             setCurrentPage(1);
           }}
@@ -125,11 +142,7 @@ export default function ProductsIndexPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
           {paginatedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              cartRef={cartRef}
-            />
+            <ProductCard key={product.id} product={product} cartRef={cartRef} />
           ))}
         </div>
       )}
@@ -140,14 +153,10 @@ export default function ProductsIndexPage() {
           {!isMobile && (
             <>
               <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.max(p - 1, 1))
-                }
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
                 className={`px-4 py-2 rounded-lg border ${themeColors.border} ${
-                  currentPage === 1
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                  currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 Previous
@@ -158,14 +167,10 @@ export default function ProductsIndexPage() {
               </span>
 
               <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className={`px-4 py-2 rounded-lg border ${themeColors.border} ${
-                  currentPage === totalPages
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                  currentPage === totalPages ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 Next

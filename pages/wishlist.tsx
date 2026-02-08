@@ -11,37 +11,50 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function WishlistPage() {
   const { resolvedTheme } = useTheme();
-  const { wishlist } = useWishlistStore(); // contains product IDs
+  const { items: wishlist } = useWishlistStore(); // array of product IDs
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<Product[]>([]);
   const [savedProducts, setSavedProducts] = useState<Product[]>([]);
 
   useEffect(() => setMounted(true), []);
 
-  // Fetch products once
   useEffect(() => {
     async function loadProducts() {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const res = await fetch(`${baseUrl}/products`);
-        const data = (await res.json()) as Product[];
+        if (!baseUrl) throw new Error("API base URL is not defined");
 
-        setProducts(data);
+        const res = await fetch(`${baseUrl}/products/`); // adjust trailing slash as needed
+        if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
 
-        // Filter wishlist items
-        const filtered = data.filter((p) => wishlist.includes(p.id));
+        const data = await res.json();
+
+        // Normalize response to always be an array
+        const productsArray: Product[] = Array.isArray(data) ? data : data.results || [];
+
+        // Filter only products in wishlist
+        const filtered = productsArray.filter((p) =>
+          Array.isArray(wishlist) ? wishlist.includes(p.id) : false
+        );
+
         setSavedProducts(filtered);
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Wishlist fetch failed:", error);
+      } catch (err) {
+        console.error("Wishlist fetch failed:", err);
+        setSavedProducts([]);
+      } finally {
         setLoading(false);
       }
     }
 
-    loadProducts();
+    if (wishlist.length > 0) {
+      setLoading(true);
+      loadProducts();
+    } else {
+      // Empty wishlist
+      setSavedProducts([]);
+      setLoading(false);
+    }
   }, [wishlist]);
 
   if (!mounted) return null;
@@ -52,8 +65,7 @@ export default function WishlistPage() {
   return (
     <ProtectedRoute>
       <section
-        className={`mt-10 px-6 md:px-10 max-w-7xl mx-auto 
-        ${themeColors.bg} ${themeColors.text}`}
+        className={`mt-10 px-6 md:px-10 max-w-7xl mx-auto ${themeColors.bg} ${themeColors.text}`}
       >
         <h2 className="text-2xl md:text-3xl font-bold mb-6 flex items-center gap-2">
           <span className="text-red-500">❤️</span> My Wishlist

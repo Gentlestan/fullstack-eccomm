@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { UserRole } from "../store/authstore";
-import { useAuthStore } from "../store/authstore";
-import { colors, ThemeKey } from "@/theme";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { colors, ThemeKey } from "@/theme";
+import { useAuth } from "@/components/context/AuthContext"; // ✅ use your AuthContext
 
 interface Props {
-  userRole?: UserRole;
+  userRole?: "admin" | "user"; // simple role type
 }
 
 export default function ProfileMenu({ userRole }: Props) {
@@ -16,8 +16,24 @@ export default function ProfileMenu({ userRole }: Props) {
   const themeKey: ThemeKey = resolvedTheme === "dark" ? "dark" : "light";
   const themeColors = colors.header[themeKey];
 
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuth(); // ✅ useAuth provides logout & user info
+  const router = useRouter();
+
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();       // call logout from AuthContext
+      setOpen(false);       // close menu
+      router.push("/");     // redirect to home (SPA-friendly)
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="relative">
@@ -36,35 +52,36 @@ export default function ProfileMenu({ userRole }: Props) {
         >
           <Link
             href="/account"
-            className={`px-4 py-2 hover:underline`}
+            className="px-4 py-2 hover:underline"
             onClick={() => setOpen(false)}
           >
             My Account
           </Link>
+
           <Link
             href="/orders"
-            className={`px-4 py-2 hover:underline`}
+            className="px-4 py-2 hover:underline"
             onClick={() => setOpen(false)}
           >
             Orders
           </Link>
+
           {userRole === "admin" && (
             <Link
               href="/admin"
-              className={`px-4 py-2 hover:underline`}
+              className="px-4 py-2 hover:underline"
               onClick={() => setOpen(false)}
             >
               Admin Dashboard
             </Link>
           )}
+
           <button
-            className="px-4 py-2 text-left w-full hover:underline"
-            onClick={() => {
-              logout();
-              setOpen(false);
-            }}
+            disabled={loggingOut}
+            className="px-4 py-2 text-left w-full hover:underline disabled:opacity-50"
+            onClick={handleLogout}
           >
-            Logout
+            {loggingOut ? "Logging out..." : "Logout"}
           </button>
         </div>
       )}

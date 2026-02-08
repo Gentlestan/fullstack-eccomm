@@ -1,12 +1,13 @@
-"use client";
+"use client"; // safe to keep, ignored in pages router
 
-import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/components/store/authstore";
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/router"; // ✅ IMPORTANT
+import { authstore } from "@/components/store/authstore";
+import PageSkeleton from "@/components/skeletons/PageSkeleton";
 
 interface Props {
   children: ReactNode;
-  redirectTo?: string; // optional redirect path, default /login
+  redirectTo?: string;
 }
 
 export default function ProtectedRoute({
@@ -14,23 +15,21 @@ export default function ProtectedRoute({
   redirectTo = "/login",
 }: Props) {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-  const [mounted, setMounted] = useState(false);
+  const { isAuthenticated, isLoading } = authstore();
 
-  // Ensure client-side rendering to prevent hydration issues
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Redirect if not authenticated (after mount)
-  useEffect(() => {
-    if (mounted && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.replace(redirectTo);
     }
-  }, [mounted, isAuthenticated, router, redirectTo]);
+  }, [isLoading, isAuthenticated, router, redirectTo]);
 
-  // Prevent flashing protected content before auth is ready
-  if (!mounted || !isAuthenticated) {
+  // 🔹 Show skeleton while auth is resolving
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
+
+  // 🔹 Prevent protected content flash
+  if (!isAuthenticated) {
     return null;
   }
 
