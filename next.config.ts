@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
         port: "8000",
         pathname: "/media/**",
       },
+
+       // Render backend (for production / deployed API)
+    {
+      protocol: "https",
+      hostname: "eccomm-gadjet-backend.onrender.com",
+      pathname: "/media/**",
+    },
+    
     ],
   },
 };
