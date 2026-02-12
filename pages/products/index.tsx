@@ -48,6 +48,7 @@ export default function ProductsIndexPage() {
     async function loadProducts() {
       try {
         const allProducts: Product[] = await fetchAllProducts();
+        console.log("PRODUCTION PRODUCTS:", allProducts); // <-- check this
         setProducts(allProducts);
         setFiltered(allProducts);
       } catch (err) {
