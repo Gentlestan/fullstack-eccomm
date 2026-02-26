@@ -6,13 +6,10 @@ import { colors, ThemeKey } from "@/theme";
 import { CartItem } from "@/components/store/CartStore";
 import { authstore } from "@/components/store/authstore";
 
-// --- Paystack types ---
 declare global {
   interface Window {
     PaystackPop?: {
-      setup: (options: any) => {
-        openIframe: () => void;
-      };
+      setup: (options: any) => { openIframe: () => void };
     };
   }
 }
@@ -32,6 +29,7 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
     "" | "success" | "error" | "closed" | "invalid_form" | "empty_cart" | "paystack_not_ready" | "out_of_stock"
   >("");
   const [paystackReady, setPaystackReady] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -43,10 +41,7 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
 
   // Load Paystack script
   useEffect(() => {
-    if (window.PaystackPop) {
-      setPaystackReady(true);
-      return;
-    }
+    if (window.PaystackPop) return setPaystackReady(true);
 
     const script = document.createElement("script");
     script.src = "https://js.paystack.co/v1/inline.js";
@@ -73,7 +68,28 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
     0
   );
 
-  const shippingAddress = `${form.address}, ${form.city}, ${form.country}`;
+  // ------------------------
+  // CREATE PENDING ORDER
+  // ------------------------
+  const createPendingOrder = async (): Promise<number> => {
+    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const authFetch = authstore.getState().authFetch;
+    if (!API_URL || !authFetch) throw new Error("Auth not ready");
+
+    const res = await authFetch(`${API_URL}/orders/create_pending/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || "Failed to create pending order");
+    }
+
+    const data = await res.json();
+    return data.pending_order_id;
+  };
 
   // ------------------------
   // PAYSTACK PAYMENT HANDLER
@@ -84,19 +100,6 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
     setPaymentStatus("");
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const authFetch = authstore.getState().authFetch;
-      if (!API_URL || !authFetch) throw new Error("Auth not ready");
-
-      // Validate cart with backend
-      const validateRes = await authFetch(`${API_URL}/cart/validate/`);
-      const validateData = await validateRes.json();
-      if (!validateRes.ok || !validateData.valid) {
-        setPaymentStatus("out_of_stock");
-        setLoading(false);
-        return;
-      }
-
       if (!items.length) {
         setPaymentStatus("empty_cart");
         setLoading(false);
@@ -115,16 +118,24 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
         return;
       }
 
-      const orderItems = items.map((item) => ({
-        product_id: item.product.id,
-        quantity: item.qty,
-      }));
+      // 1️⃣ Create pending order
+      const orderId = await createPendingOrder();
 
-      // ✅ Correct callback function
+      // Freeze shipping data before opening Paystack
+    const shippingData = {
+      shipping_name: form.name,
+      shipping_phone: form.phone,
+      shipping_address: form.address,
+      shipping_city: form.city,
+      shipping_country: form.country,
+    };
+
+
+      // 2️⃣ Open Paystack popup
       const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY || "",
         email: form.email,
-        amount: totalPrice * 100,
+        amount: totalPrice * 100, // in kobo
         currency: "NGN",
 
         callback(response: { reference: string }) {
@@ -133,19 +144,27 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
 
           (async () => {
             try {
+              const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+              const authFetch = authstore.getState().authFetch;
+
+              // Send all shipping info
               const res = await authFetch(`${API_URL}/payments/paystack/verify/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  reference: response.reference,
-                  items: orderItems,
-                  shipping_address: shippingAddress,
-                }),
+                reference: response.reference,
+                pending_order_id: orderId,
+                ...shippingData,
+              }),
+
               });
 
               const data = await res.json();
-              if (!res.ok) throw new Error("Payment verification failed");
+              console.log("Paystack verify response:", data);
 
+              if (!res.ok) throw new Error(data.detail || "Payment verification failed");
+
+              // Success → clear cart
               authstore.getState().clearCart();
               setPaymentStatus("success");
             } catch (err) {
@@ -173,7 +192,7 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
   };
 
   // ------------------------
-  // Determine if checkout is allowed
+  // Check if checkout allowed
   // ------------------------
   const hasInvalidItems = items.some((item) => item.qty > item.product.stock);
   const canPay = isFormValid && items.length && paystackReady && !hasInvalidItems;
@@ -237,28 +256,20 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
         )}
         {paymentStatus === "error" && (
           <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
-            ❌ Payment verification failed or stock unavailable.
+            ❌ Payment verification failed. Check console for details.
           </div>
         )}
         {paymentStatus === "invalid_form" && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
-            ❌ Please fill all required fields.
-          </div>
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">❌ Please fill all required fields.</div>
         )}
         {paymentStatus === "empty_cart" && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
-            ❌ Your cart is empty.
-          </div>
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">❌ Your cart is empty.</div>
         )}
         {paymentStatus === "paystack_not_ready" && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
-            ❌ Payment system not ready. Try again.
-          </div>
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">❌ Payment system not ready. Try again.</div>
         )}
         {paymentStatus === "out_of_stock" && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
-            ❌ Some items in your cart are out of stock.
-          </div>
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">❌ Some items in your cart are out of stock.</div>
         )}
       </div>
 
@@ -268,7 +279,9 @@ export default function CheckoutForm({ items }: CheckoutFormProps) {
 
         {items.map(({ product, qty }) => (
           <div key={product.id} className="flex justify-between text-sm">
-            <span>{product.name} × {qty}</span>
+            <span>
+              {product.name} × {qty}
+            </span>
             <span>₦{(product.price * qty).toFixed(2)}</span>
           </div>
         ))}
