@@ -76,7 +76,13 @@ export default function ProductCard({ product, cartRef }: Props) {
         <h3 className="font-semibold text-base md:text-lg">{product.name}</h3>
         <p className="text-sm opacity-70">{product.brand}</p>
         <StarRating rating={product.rating} />
-        <p className={`text-lg font-bold ${themeColors.price}`}>${product.price}</p>
+        <p className={`text-lg font-bold ${themeColors.price}`}>
+          {new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(product.price)}
+        </p>
+
       </div>
 
       {/* ACTIONS */}
